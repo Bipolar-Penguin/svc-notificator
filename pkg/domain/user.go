@@ -16,5 +16,5 @@ type User struct {
 		Phone    bool `json:"phone"`
 		Telegram bool `json:"telegram"`
 		Push     bool `json:"push"`
-	}
+	} `json:"permissions"`
 }
