@@ -107,7 +107,7 @@ func run() {
 
 	rabbitmqExchangeName := viper.GetString("rabbitmq-exchange")
 	if rabbitmqExchangeName == "" {
-		logger.Log("error", "rabbitmq-url argument was not provided")
+		logger.Log("error", "rabbitmq-exchange argument was not provided")
 		os.Exit(1)
 	}
 
