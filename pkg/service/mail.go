@@ -35,7 +35,7 @@ func (e mailNotificator) NotifyUser(event *domain.Event, userEmail string) {
 		"Котировочная сессия обновлена: %s\r\n",
 		e.username,
 		userEmail,
-		event.Action,
+		TranslateEvent(event),
 	)
 
 	clientConn, err := smtp.Dial(fmt.Sprintf("%s:%d", smtpHost, smtpPort))

@@ -12,8 +12,8 @@ type Notificator interface {
 	NotifyUser(event *domain.Event, userID string)
 }
 
-func translateEvent(event *domain.Event) string {
-	return fmt.Sprintf("Ваша ставка неактуальна: %s", event.Action)
+func TranslateEvent(event *domain.Event) string {
+	return fmt.Sprintf("Ваша ставка неактуальна новая минимальная ставка: %d", event.Amount)
 }
 
 type service struct {
