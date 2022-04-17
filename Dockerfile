@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY . /app
 
+ENV CGO_ENABLED=0
+
 RUN go build -o /app/build/svc-notificator ./main.go
 
 FROM alpine

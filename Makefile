@@ -1,3 +1,7 @@
+build-push-docker:
+	docker build --pull . -t kuwerin/svc-notificator:latest
+	docker push kuwerin/svc-notificator:latest
+
 check:
 	golangci-lint run -c .golangci.yml
 
