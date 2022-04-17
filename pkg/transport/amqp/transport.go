@@ -49,14 +49,14 @@ type rabbitBroker struct {
 	connection      *amqp.Connection
 	channel         *amqp.Channel
 	logger          log.Logger
-	eventsChan      chan<- domain.Event
+	eventsChan      chan<- *domain.Event
 	isBrokerActive  bool
 	notifyConnClose chan *amqp.Error
 	notifyChanClose chan *amqp.Error
 	quit            chan bool
 }
 
-func NewRabbitBroker(logger log.Logger, config *Config, notificator service.Notificator, eventsChan chan<- domain.Event) rabbitBroker {
+func NewRabbitBroker(logger log.Logger, config *Config, notificator service.Notificator, eventsChan chan<- *domain.Event) rabbitBroker {
 	var rb = rabbitBroker{
 		config:      config,
 		logger:      logger,
@@ -178,53 +178,47 @@ func (rb *rabbitBroker) initExchange() (*amqp.Channel, error) {
 }
 
 func (rb *rabbitBroker) listenQueues() {
-	for _, eventType := range eventTypes {
-		err := rb.declareQueue(eventType)
-		if err != nil {
-			rb.logger.Log("error", err)
-		}
+	eventType := eventTypes[0]
+	err := rb.declareQueue(eventType)
+	if err != nil {
+		rb.logger.Log("error", err)
+	}
 
-		go func(eventType string) {
-			queueName := fmt.Sprintf("%s.%s", promoCodeEntity, eventType)
+	queueName := fmt.Sprintf("%s.%s", promoCodeEntity, eventType)
 
-			rb.logger.Log("event", "started consuming", "queue", queueName)
+	rb.logger.Log("event", "started consuming", "queue", queueName)
 
-			msgs, err := rb.channel.Consume(
-				queueName,
-				"",
-				rb.config.AutoAck,
-				rb.config.Exclusive,
-				rb.config.NoLocal,
-				rb.config.NoWait,
-				rb.config.Args,
-			)
-			if err != nil {
+	msgs, err := rb.channel.Consume(
+		queueName,
+		"",
+		rb.config.AutoAck,
+		rb.config.Exclusive,
+		rb.config.NoLocal,
+		rb.config.NoWait,
+		rb.config.Args,
+	)
+	if err != nil {
+		rb.logger.Log("error", err)
+	}
+
+	for {
+		for m := range msgs {
+			var message domain.Event
+
+			if err := json.Unmarshal(m.Body, &message); err != nil {
 				rb.logger.Log("error", err)
 			}
 
-			select {
-			case <-msgs:
-				for m := range msgs {
-					var message domain.Event
+			rb.logger.Log("event", fmt.Sprintf("%v", message))
 
-					go rb.notificator.NotifyUser(&message)
+			rb.eventsChan <- &message
 
-					if err := json.Unmarshal(m.Body, &message); err != nil {
-						rb.logger.Log("error", err)
-					}
+			rb.notificator.NotifyUser(&message, "")
 
-					rb.logger.Log("event", fmt.Sprintf("%v", message))
-
-					rb.eventsChan <- message
-
-					if err := m.Ack(false); err != nil {
-						rb.logger.Log("error", err)
-					}
-				}
-			case <-rb.quit:
-				return
+			if err := m.Ack(false); err != nil {
+				rb.logger.Log("error", err)
 			}
-		}(eventType)
+		}
 	}
 }
 

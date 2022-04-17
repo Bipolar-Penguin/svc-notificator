@@ -18,11 +18,11 @@ const (
 
 type websocketServer struct {
 	addr           int
-	tradingUpdates <-chan domain.Event
+	tradingUpdates <-chan *domain.Event
 	logger         log.Logger
 }
 
-func NewWebsocketServer(addr int, tradingUpdates <-chan domain.Event, logger log.Logger) *websocketServer {
+func NewWebsocketServer(addr int, tradingUpdates <-chan *domain.Event, logger log.Logger) *websocketServer {
 	return &websocketServer{
 		addr:           addr,
 		tradingUpdates: tradingUpdates,

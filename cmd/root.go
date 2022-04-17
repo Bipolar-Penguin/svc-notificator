@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/Bipolar-Penguin/svc-notificator/pkg/domain"
+	"github.com/Bipolar-Penguin/svc-notificator/pkg/repository"
 	"github.com/Bipolar-Penguin/svc-notificator/pkg/service"
 	"github.com/Bipolar-Penguin/svc-notificator/pkg/transport/amqp"
 	"github.com/Bipolar-Penguin/svc-notificator/pkg/transport/http"
@@ -21,7 +22,9 @@ const (
 
 var (
 	cfgHTTPPort                 int
+	cfgMongoURL                 string
 	cfgRabbitmqURL              string
+	cfgRabbitmqExchange         string
 	cfgNotificatorTelegramToken string
 	cfgNotificatorSMSToken      string
 	cfgNotificatorEmailUsername string
@@ -45,8 +48,9 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().IntVar(&cfgHTTPPort, "http-port", defaultHTTPort, "HTTP port to listen")
+	rootCmd.PersistentFlags().StringVar(&cfgMongoURL, "mongo-url", "", "MongoDB connection URL")
 	rootCmd.PersistentFlags().StringVar(&cfgRabbitmqURL, "rabbitmq-url", "", "RabbitMQ connection URL")
-	rootCmd.PersistentFlags().StringVar(&cfgRabbitmqURL, "rabbitmq-excange", "", "RabbitMQ excange name")
+	rootCmd.PersistentFlags().StringVar(&cfgRabbitmqExchange, "rabbitmq-exchange", "", "RabbitMQ excange name")
 	rootCmd.PersistentFlags().StringVar(&cfgNotificatorTelegramToken, "notificator-telegram-token", "", "Telegram bot API hash ID")
 	rootCmd.PersistentFlags().StringVar(&cfgNotificatorSMSToken, "notificator-sms-token", "", "SMS Aero API hash ID")
 	rootCmd.PersistentFlags().StringVar(&cfgNotificatorEmailUsername, "notificator-mail-user", "", "Yandex email")
@@ -73,7 +77,7 @@ func reader(conn *websocket.Conn) {
 }
 
 func run() {
-	//var err error
+	var err error
 
 	// Create the logger
 	var logger log.Logger
@@ -87,6 +91,12 @@ func run() {
 	httpPort := viper.GetInt("http-port")
 	if httpPort == 0 {
 		logger.Log("error", "http-port argument was not provided")
+	}
+
+	mongoURL := viper.GetString("mongo-url")
+	if mongoURL == "" {
+		logger.Log("error", "mongo-url argument was not provided")
+		os.Exit(1)
 	}
 
 	rabbitmqURL := viper.GetString("rabbitmq-url")
@@ -125,6 +135,17 @@ func run() {
 		os.Exit(1)
 	}
 
+	// create repositories
+	var rep *repository.Repositories
+	{
+		logger := log.With(logger, "location", "repositories")
+		rep, err = repository.MakeRepositories(mongoURL, logger)
+		if err != nil {
+			logger.Log("error", err)
+			os.Exit(1)
+		}
+	}
+
 	// Create TG notificator
 	telegramNotificator := service.NewTelegramNotificator(notificatorTelegramToken, logger)
 
@@ -135,9 +156,9 @@ func run() {
 	mailNotificator := service.NewEmailNotificator(notificatorEmailUsername, notificatorEmailPassword, logger)
 
 	// Create service
-	service := service.NewService(*telegramNotificator, *smsNotificator, *mailNotificator, logger)
+	service := service.NewService(*telegramNotificator, *smsNotificator, *mailNotificator, rep, logger)
 
-	tradingUpdates := make(chan domain.Event)
+	tradingUpdates := make(chan *domain.Event)
 
 	// Create http websocket server
 	websocketServer := http.NewWebsocketServer(httpPort, tradingUpdates, logger)
@@ -150,10 +171,10 @@ func run() {
 			ExchangeName: rabbitmqExchangeName,
 			ExchangeType: "topic",
 			ConnString:   rabbitmqURL,
-			Durable:      true,
-			AutoDelete:   false,
+			Durable:      false,
+			AutoDelete:   true,
 			Internal:     false,
-			Args:         nil,
+			Args:         map[string]interface{}{"x-message-ttl": 10000},
 			AutoAck:      false,
 			Exclusive:    false,
 			NoLocal:      false,

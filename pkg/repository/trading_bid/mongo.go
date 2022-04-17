@@ -1,7 +1,13 @@
 package trading_bid
 
 import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/Bipolar-Penguin/svc-notificator/pkg/domain"
 )
 
 type mongoRepository struct {
@@ -14,8 +20,20 @@ func NewMongoRepository(coll *mongo.Collection) *mongoRepository {
 	}
 }
 
-//func (m *mongoRepository) FindByUserID(userID string) ([]domain.TradingBid, error) {
-//	var tradingBids []domain.TradingBid
-//
-//	//m.coll.Find
-//}
+func (m *mongoRepository) FindMany(tradingSessionID string) ([]domain.TradingBid, error) {
+	var bids []domain.TradingBid
+
+	var opts options.FindOptions
+	opts.SetSort(bson.M{"bid": 1})
+
+	cursor, err := m.coll.Find(context.Background(), bson.M{"trading_session_id": tradingSessionID}, &opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cursor.All(context.Background(), &bids); err != nil {
+		return nil, err
+	}
+
+	return bids, nil
+}

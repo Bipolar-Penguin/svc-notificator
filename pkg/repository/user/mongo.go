@@ -23,7 +23,7 @@ func (m *mongoRepository) Find(userID string) (domain.User, error) {
 
 	var err error
 
-	err = m.coll.FindOne(context.Background(), bson.M{"id": userID}).Decode(&user)
+	err = m.coll.FindOne(context.Background(), bson.M{"_id": userID}).Decode(&user)
 	if err == mongo.ErrNoDocuments {
 		return user, nil
 	}

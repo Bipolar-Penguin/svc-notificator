@@ -46,9 +46,9 @@ func NewSMSNotificator(authString string, logger log.Logger) *smsNotificator {
 	return s
 }
 
-func (s smsNotificator) NotifyUser(event *domain.Event) {
+func (s smsNotificator) NotifyUser(event *domain.Event, phoneNumber string) {
 	defer s.logger.Log("event", "sms done")
-	var resBody = map[string]string{"number": "79967726643", "text": translateEvent(event), "sign": "SMS Aero"}
+	var resBody = map[string]string{"number": phoneNumber, "text": translateEvent(event), "sign": "SMS Aero"}
 
 	jsonBody, err := json.Marshal(resBody)
 	if err != nil {

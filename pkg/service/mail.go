@@ -28,13 +28,13 @@ func NewEmailNotificator(username, password string, logger log.Logger) *mailNoti
 	}
 }
 
-func (e mailNotificator) NotifyUser(event *domain.Event) {
+func (e mailNotificator) NotifyUser(event *domain.Event, userEmail string) {
 	msg := fmt.Sprintf("From: %s\r\n"+
 		"To: %s\r\n"+
 		"Subject: Обновление котировочной сессии\r\n\r\n"+
 		"Котировочная сессия обновлена: %s\r\n",
 		e.username,
-		"kuwerin@gmail.com",
+		userEmail,
 		event.Action,
 	)
 

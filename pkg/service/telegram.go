@@ -26,8 +26,8 @@ func NewTelegramNotificator(botToken string, logger log.Logger) *telegramNotific
 	}
 }
 
-func (tn telegramNotificator) NotifyUser(event *domain.Event) {
-	url := fmt.Sprintf(telegramAPIURL, tn.botToken, "528263453", translateEvent(event))
+func (tn telegramNotificator) NotifyUser(event *domain.Event, telegramID string) {
+	url := fmt.Sprintf(telegramAPIURL, tn.botToken, telegramID, translateEvent(event))
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
